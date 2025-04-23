@@ -26,4 +26,5 @@ def file_handling(content: str, filename: str) -> list:
         for word, _ in top_words
     }
     words_result = [{'word': word, 'tf': round(tf, 4), 'idf': round(idf_map[word], 4)} for word, tf in top_words]
+    words_result.sort(key=lambda x: x['idf'], reverse=True)
     return words_result
