@@ -14,5 +14,7 @@
 5. pip install -r requirements.txt
 
 Для запуска использовать:
-flask --app server run 
+
+flask --app server run
+
 (!) Для запуска необходимо находиться в директории с server.py
