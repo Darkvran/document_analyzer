@@ -5,3 +5,14 @@
 - tf, сколько раз это слово встречается в тексте
 - idf, обратная частота документа
 ### Вывод упорядочить по уменьшению idf.
+---
+## Инструкция по установке
+1. git clone https://github.com/Darkvran/document_analyzer
+2. cd document_analyzer
+3. python -m venv venv
+4. venv\Scripts\activate.bat
+5. pip install -r requirements.txt
+
+Для запуска использовать:
+flask --app server run 
+(!) Для запуска необходимо находиться в директории с server.py
