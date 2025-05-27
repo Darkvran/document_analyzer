@@ -6,7 +6,8 @@ from handling import file_handling
 from metric import MetricsCollector
 from dotenv import load_dotenv
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(dotenv_path)
 
 ALLOWED_EXTENSIONS = os.getenv("APP_ALLOWED_EXTENSIONS")
 VERSION = os.getenv("APP_VERSION")
