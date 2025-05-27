@@ -1,11 +1,15 @@
 from pymongo import MongoClient
 from datetime import datetime
-import statistics
+import statistics, os
+from dotenv import load_dotenv
+
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(dotenv_path)
 
 class MetricsCollector:
-    def __init__(self, uri="mongodb://localhost:27017/", db_name="text_analysis"):
-        self.client = MongoClient(uri)
-        self.db = self.client[db_name]
+    def __init__(self):
+        self.client = MongoClient(os.getenv("MONGODB_URI"))
+        self.db = self.client[os.getenv("MONGODB_DB_NAME")]
         self.collection = self.db["metrics"]
 
         if self.collection.count_documents({}) == 0:

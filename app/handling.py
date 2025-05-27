@@ -1,7 +1,6 @@
 from data import DataBase
 import re
 import math
-
 db = DataBase()  
 
 def file_handling(content: str, filename: str) -> list:
