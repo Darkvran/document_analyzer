@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from handling import file_handling
 from metric import MetricsCollector
 from dotenv import load_dotenv
+import chardet
 
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(dotenv_path)
@@ -33,7 +34,11 @@ def index():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            content = file.read().decode('cp1251')
+            raw_data = file.read()
+            encoding = chardet.detect(raw_data)['encoding']
+            if encoding is None:
+                encoding = 'utf-8' 
+            content = raw_data.decode(encoding)
             start = time.time()
             words_data = file_handling(content, filename)
             duration = round(time.time() - start, 3)
