@@ -1,3 +1,7 @@
+networks:
+  over-ne:
+    driver: bridge
+
 services:
   web:
     build: .
@@ -5,6 +9,8 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    networks:
+      - over-ne
     depends_on:
       - mongo
     volumes:
@@ -17,11 +23,17 @@ services:
       - "27017:27017"
     env_file:
       - .env
+    networks:
+      - over-ne
     volumes:
       - mongo_data:/data/db
-
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
   nginx:
     image: nginx:latest
+    networks:
+      - over-ne
     ports:
       - "80:80"
     volumes:
