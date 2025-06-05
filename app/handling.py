@@ -1,7 +1,6 @@
-from data import DataBase
+from data import DataBase, Document, database
 import re
 import math
-db = DataBase()  
 
 def file_handling(content: str, filename: str) -> list:
     words_list = re.split(r'\W+', content.lower())
@@ -14,8 +13,9 @@ def file_handling(content: str, filename: str) -> list:
 
     sorted_values = sorted(count.items(), key=lambda tpl: tpl[1], reverse=True)
     tf_dict = {word: freq / words_num for word, freq in sorted_values}
-
-    db.insert_document_with_words(filename, words_num, tf_dict)
+    words = [{"word": word, "tf": tf} for word, tf in tf_dict.items()]
+    document = Document(filename, words_num, words)
+    db.insert_document(document)
 
     top_words = db.get_top_words_for_document(filename)
     total_docs = db.get_documents_count()

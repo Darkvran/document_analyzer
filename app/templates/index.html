@@ -2,44 +2,22 @@
 <html lang="ru">
     <head>
         <meta charset="UTF-8">
-        <title>Document Analyzer</title>
+        <title>Document Analyzer|Upload</title>
     </head>
     <body>
-        <h1>Загрузить новый файл</h1>
-        <div id="loading" style="display: none;">Обработка документа...</div>
-        <form method=post enctype=multipart/form-data onsubmit="showLoader()">
-            <input type=file name=file>
-            <input type=submit value=Upload>
-        </form>
-        {% if words %}
-        <h2>Результаты для {{ filename }}</h2>
-        <table border="1">
-            <tr>
-                <th>Слово</th>
-                <th>TF</th>
-                <th>IDF</th>
-            </tr>
-            {% for row in words %}
-            <tr>
-                <td>{{ row.word }}</td>
-                <td>{{ row.tf }}</td>
-                <td>{{ row.idf }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% endif %}
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
+        <h1>Document analyzer</h1>
+        <nav>
+            {% if not current_user.is_authenticated %}
+            <h3>Добро пожаловать.</h3>
+            <p>Пожалуйста, войдите или зарегестрируйтесь.</p>
+            <a href="{{ url_for('login') }}">Авторизация</a>
+            <a href="{{ url_for('register') }}">Регистрация</a>
+            {% else %}
+            <h3>Добро пожаловать, {{current_user.username}}</h3>
+            <a href="{{ url_for('upload') }}">Загрузить документ</a>
+            <a href="{{ url_for('logout') }}">Выход</a>
             {% endif %}
-        {% endwith %}
-        
-        <script>
-            function showLoader() {
-                document.getElementById('loading').style.display = 'block';
-            }
-        </script>
+            
+        </nav>
     </body>
 </html>
