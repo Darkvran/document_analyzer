@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>Document Analyzer|Вход</title>
+    </head>
+    <body>
+        <a href="{{ url_for('index') }}">Домашняя страница</a>
+        <form method="POST" action="{{ url_for('login') }}">
+            <h2>Вход</h2>
+            {% if message %}
+            <h3>{{ message }}</h3>
+            {% endif %}
+            <input type="email" name="email" placeholder="Почта" required>
+            <input type="password" name="password" placeholder="Пароль" required>
+            <button type="submit">Войти</button>
+            <div class="link">
+            <a href="{{ url_for('register') }}">Нет аккаунта? Зарегистрируйся</a>
+            </div>
+            
+        </form>
+    </body>
+</html>
