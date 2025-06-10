@@ -14,7 +14,7 @@
             <a href="{{ url_for('register') }}">Регистрация</a>
             {% else %}
             <h3>Добро пожаловать, {{current_user.username}}</h3>
-            <a href="{{ url_for('upload') }}">Загрузить документ</a>
+            <a href="{{ url_for('collections') }}">Мои коллекции</a>
             <a href="{{ url_for('logout') }}">Выход</a>
             {% endif %}
             

@@ -6,7 +6,8 @@
     </head>
     <body>
         <a href="{{ url_for('index') }}">Домашняя страница</a>
-        <h1>Загрузить новый файл</h1>
+        <a href="{{ url_for('collections') }}">Мои коллекции</a>
+        <h1>Загрузить новый файл в коллекцию {{ collection_name }}</h1>
         <div id="loading" style="display: none;">Обработка документа...</div>
         <form method=post enctype=multipart/form-data onsubmit="showLoader()">
             <input type=file name=file>
