@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>Document Analyzer|Collections</title>
+    </head>
+    <body>
+        <a href="{{ url_for('index') }}">Домашняя страница</a>
+        <h1>Мои коллекции</h1>
+        
+        <form method="POST" action="{{ url_for('collections') }}">
+            <h2>Cоздать новую коллекцию</h2>
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <h3>{{ message }}</h3>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+            <input type="text" name="collection_name" placeholder="Имя коллекции" required>
+
+            <button type="submit">Создать</button>
+        </form>
+        <hr>
+         {% if collections %}
+        <h2>Список коллекций</h2>
+        <table border="1">
+            <tr>
+                <th>Название</th>
+                <th>Действия</th>
+            </tr>
+            {% for collection in collections %}
+            <tr>
+                <td>{{ collection.name }}</td>
+                <td>
+                    Смотреть
+                    <a href="{{ url_for('upload', collection_id=collection._id) }}">Загрузить</a>
+                    <a href="{{ url_for('delete_collection', collection_id=collection._id) }}">Удалить</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+    <p>У вас пока нет коллекций.</p>
+    {% endif %}
+    </body>
+</html>

@@ -9,16 +9,19 @@ load_dotenv(dotenv_path)
 
 
 class Collection:
-    pass
+    def __init__(self, user_id: str, name: str, doc_ids: list[str]):
+        self.user_id = user_id
+        self.name = name
+        self.doc_ids = doc_ids
+        
 class Document:
-    def __init__(self, filename: str, words_num: int, words: list[dict]):
+    def __init__(self, filename: str, words_num: int, words: list[dict], content: str, collections: list [str]):
         self.filename = filename
         self.words_num = words_num
+        self.content = content
+        self.collections = collections
         self.words = words
-    def get_top_words_for_document(self,limit: int = 50) -> list[tuple[str, float]]:
-        top_words = self.words.sort(key=lambda w: w["tf"], reverse=True)
-        return [(entry["word"], entry["tf"]) for entry in top_words[:limit]]
-    
+        
 class User(UserMixin):
     def __init__(self, id: int, username: str, collections: Collection = None):
         self.id = id
@@ -34,6 +37,7 @@ class DataBase:
         self.db = self.client[os.getenv("MONGODB_DB_NAME")]
         self.documents = self.db["documents"]
         self.users = self.db["users"]
+        self.collections = self.db["collections"]
 
     def insert_document(self, document: Document):
         self.documents.update_one(
