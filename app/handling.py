@@ -3,6 +3,32 @@ from data import database
 import math
 from bson import ObjectId
 
+def recalculate_idf(collection_id: str):
+    collection_id_obj = ObjectId(collection_id)
+    documents = list(database.documents.find({"collection_id": collection_id_obj}))
+    total_docs = len(documents)
+
+    word_document_counts = {}
+    for doc in documents:
+        unique_words = set(word['word'] for word in doc.get("words", []))
+        for word in unique_words:
+            word_document_counts[word] = word_document_counts.get(word, 0) + 1
+
+    idf_map = {
+        word: math.log((total_docs + 1) / (df + 1)) + 1
+        for word, df in word_document_counts.items()
+    }
+
+    for doc in documents:
+        updated_words = []
+        for word in doc.get("words", []):
+            word['idf'] = idf_map.get(word['word'], 0)
+            updated_words.append(word)
+        database.documents.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"words": updated_words}}
+        )
+
 def file_handling(content: str, filename: str, collection_id: str, user_id: str) -> list:
     words_list = re.split(r'\W+', content.lower())
     words_num = len(words_list)
@@ -15,8 +41,7 @@ def file_handling(content: str, filename: str, collection_id: str, user_id: str)
     sorted_values = sorted(count.items(), key=lambda tpl: tpl[1], reverse=True)[:50]
     tf_dict = {word: freq / words_num for word, freq in sorted_values}
     words = [{"word": word, "tf": tf} for word, tf in tf_dict.items()]
-    
-    # Создаем или обновляем документ с указанием collection_id
+
     document = {
         "filename": filename,
         "content": content,
@@ -28,34 +53,17 @@ def file_handling(content: str, filename: str, collection_id: str, user_id: str)
     inserted_doc = database.documents.insert_one(document)
     database.collections.update_one(
         {"_id": ObjectId(collection_id)},
-        {"$addToSet": {"doc_ids": inserted_doc.inserted_id}}  # $addToSet чтобы не дублировать
+        {"$addToSet": {"doc_ids": inserted_doc.inserted_id}}
     )
-    # Получаем топ-слов с TF из документа
-    top_words = sorted(words, key=lambda w: w["tf"], reverse=True)
+    recalculate_idf(collection_id)
 
-    # Считаем количество документов в коллекции
-    total_docs_in_collection = database.documents.count_documents({"collection_id": ObjectId(collection_id)})
-
-    # IDF считаем по документам внутри коллекции
-    idf_map = {}
-    for word_entry in top_words:
-        word = word_entry["word"]
-        doc_freq = database.documents.count_documents({
-            "collection_id": ObjectId(collection_id),
-            "words.word": word
-        })
-        idf = math.log((total_docs_in_collection + 1) / (doc_freq + 1)) + 1  
-        idf_map[word] = idf
-
-    words_result = [
+    updated_doc = database.documents.find_one({"_id": inserted_doc.inserted_id})
+    result = [
         {
-            'word': word_entry['word'],
-            'tf': round(word_entry['tf'], 4),
-            'idf': round(idf_map[word_entry['word']], 4)
+            'word': word['word'],
+            'tf': round(word['tf'], 4),
+            'idf': round(word.get('idf', 0), 4)
         }
-        for word_entry in top_words
+        for word in sorted(updated_doc['words'], key=lambda w: w.get('idf', 0), reverse=True)
     ]
-
-    words_result.sort(key=lambda x: x['idf'], reverse=True)
-
-    return words_result
+    return result

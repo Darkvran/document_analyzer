@@ -9,6 +9,8 @@ from flask_login import LoginManager, login_required, current_user, login_user, 
 from data import database, User
 import chardet, hashlib
 from bson import ObjectId
+from collections import Counter, defaultdict
+import heapq
 
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(dotenv_path)
@@ -40,6 +42,315 @@ def load_user(user_id):
 def index():
     return render_template("index.html")
 
+class Node:
+    def __init__(self, char=None, freq=0):
+        self.char = char
+        self.freq = freq
+        self.left = None
+        self.right = None
+
+    # сравнение для heapq
+    def __lt__(self, other):
+        return self.freq < other.freq
+
+def build_huffman_tree(freq_map):
+    heap = [Node(char, freq) for char, freq in freq_map.items()]
+    heapq.heapify(heap)
+
+    while len(heap) > 1:
+        left = heapq.heappop(heap)
+        right = heapq.heappop(heap)
+        merged = Node(freq=left.freq + right.freq)
+        merged.left = left
+        merged.right = right
+        heapq.heappush(heap, merged)
+
+    return heap[0] if heap else None
+
+def generate_codes(node, prefix='', code_map=None):
+    if code_map is None:
+        code_map = {}
+    if node is not None:
+        if node.char is not None:
+            code_map[node.char] = prefix
+        generate_codes(node.left, prefix + '0', code_map)
+        generate_codes(node.right, prefix + '1', code_map)
+    return code_map
+
+def huffman_encode(text):
+    if not text:
+        return '', {}
+
+    freq_map = Counter(text)
+    root = build_huffman_tree(freq_map)
+    code_map = generate_codes(root)
+
+    encoded = ''.join(code_map[char] for char in text)
+    return encoded, code_map
+
+@app.route("/api/documents/<document_id>/huffman", methods=["GET"])
+@login_required
+def document_huffman(document_id):
+    try:
+        doc = database.documents.find_one({
+            "_id": ObjectId(document_id),
+            "user_id": ObjectId(current_user.id)
+        })
+
+        if not doc:
+            abort(404, description="Документ не найден или доступ запрещён")
+
+        content = doc.get("content", "")
+        encoded, code_map = huffman_encode(content)
+
+        return jsonify({
+            "encoded": encoded,
+            "code_map": code_map
+        })
+    except Exception as e:
+        abort(400, description="Некорректный ID или ошибка обработки")
+
+@app.route("/api/documents/", methods=["GET"])
+@login_required
+def get_user_documents():
+    documents = database.documents.find({"user_id": ObjectId(current_user.id)})
+    result = [{"id": str(doc["_id"]), "title": doc["filename"]} for doc in documents]
+    return jsonify(result)
+
+@app.route("/api/documents/<document_id>", methods=["GET"])
+@login_required
+def get_document_content(document_id):
+    try:
+        doc = database.documents.find_one({
+            "_id": ObjectId(document_id),
+            "user_id": ObjectId(current_user.id)
+        })
+        if not doc:
+            abort(404, description="Документ не найден или доступ запрещён")
+
+        return jsonify({
+            "id": str(doc["_id"]),
+            "title": doc["filename"],
+            "content": doc["content"]
+        })
+    except Exception:
+        abort(400, description="Некорректный ID документа")
+
+@app.route("/api/documents/<document_id>/statistics", methods=["GET"])
+@login_required
+def get_document_statistics(document_id):
+    try:
+        doc = database.documents.find_one({
+            "_id": ObjectId(document_id),
+            "user_id": ObjectId(current_user.id)
+        })
+        if not doc:
+            abort(404, description="Документ не найден или доступ запрещён")
+        words = doc.get("words", [])
+        sorted_words = sorted(words, key=lambda x: x.get("idf", 0), reverse=True)
+        return jsonify({
+            "id": str(doc["_id"]),
+            "filename": doc["filename"],
+            "statistics": sorted_words
+        })
+    except Exception:
+        abort(400, description="Некорректный ID документа")
+
+@app.route("/api/collections", methods=["GET"])
+@login_required
+def get_collections():
+    collections = list(database.collections.find({"user_id": ObjectId(current_user.id)}))
+    
+    result = []
+    for col in collections:
+        doc_ids = col.get("doc_ids", [])
+        documents = database.documents.find({"_id": {"$in": doc_ids}})
+        document_list = [{"id": str(doc["_id"]), "filename": doc["filename"]} for doc in documents]
+
+        result.append({
+            "id": str(col["_id"]),
+            "name": col.get("name", ""),
+            "documents": document_list
+        })
+
+    return jsonify(result)
+
+@app.route("/api/collections/<collection_id>", methods=["GET"])
+@login_required
+def get_collection_documents(collection_id):
+    try:
+        collection = database.collections.find_one({"_id": ObjectId(collection_id)})
+    except:
+        abort(400, description="Некорректный ID коллекции")
+
+    if not collection:
+        abort(404, description="Коллекция не найдена")
+
+    if collection["user_id"] != ObjectId(current_user.id):
+        abort(403, description="Нет доступа к этой коллекции")
+
+    doc_ids = collection.get("doc_ids", [])
+    doc_id_strings = [str(doc_id) for doc_id in doc_ids]
+
+    return jsonify({"document_ids": doc_id_strings})
+
+@app.route("/api/collections/<collection_id>/statistics", methods=["GET"])
+@login_required
+def get_collection_statistics(collection_id):
+    try:
+        collection = database.collections.find_one({"_id": ObjectId(collection_id)})
+    except:
+        abort(400, description="Некорректный ID коллекции")
+
+    if not collection:
+        abort(404, description="Коллекция не найдена")
+
+    if collection["user_id"] != ObjectId(current_user.id):
+        abort(403, description="Нет доступа к этой коллекции")
+
+    doc_ids = collection.get("doc_ids", [])
+    if not doc_ids:
+        return jsonify({"statistics": []})
+
+    # Суммарный список слов
+    total_word_count = 0
+    tf_accumulator = defaultdict(int)
+    idf_map = {}
+
+    documents = list(database.documents.find({"_id": {"$in": doc_ids}}))
+
+    for doc in documents:
+        words = doc.get("words", [])
+        total_word_count += doc.get("words_num", 0)
+
+        for word_entry in words:
+            word = word_entry["word"]
+            freq = word_entry["tf"] * doc["words_num"]  # Преобразуем tf обратно в абсолютную частоту
+            tf_accumulator[word] += freq
+
+            # Берем IDF из документа (предполагаем, что одинаково у всех)
+            if word not in idf_map:
+                idf_map[word] = word_entry.get("idf", 0)
+
+    if total_word_count == 0:
+        return jsonify({"statistics": []})
+
+    # Формируем итог
+    result = []
+    for word, freq in tf_accumulator.items():
+        tf = freq / total_word_count
+        idf = idf_map.get(word, 0)
+        result.append({
+            "word": word,
+            "tf": round(tf, 4),
+            "idf": round(idf, 4)
+        })
+
+    # Сортировка по IDF убыванию
+    result.sort(key=lambda x: x["idf"], reverse=True)
+
+    return jsonify({"statistics": result})
+
+
+@app.route("/api/collection/<collection_id>/<document_id>", methods=["POST"])
+@login_required
+def add_document_to_collection(collection_id, document_id):
+    try:
+        collection = database.collections.find_one({"_id": ObjectId(collection_id)})
+        document = database.documents.find_one({"_id": ObjectId(document_id)})
+    except:
+        abort(400, description="Некорректный ID")
+
+    if not collection or not document:
+        abort(404, description="Коллекция или документ не найдены")
+
+    if collection["user_id"] != ObjectId(current_user.id) or document["user_id"] != ObjectId(current_user.id):
+        abort(403, description="Нет доступа")
+
+    # Обновляем документ
+    database.documents.update_one(
+        {"_id": ObjectId(document_id)},
+        {"$set": {"collection_id": ObjectId(collection_id)}}
+    )
+
+    # Добавляем ID документа в коллекцию
+    database.collections.update_one(
+        {"_id": ObjectId(collection_id)},
+        {"$addToSet": {"doc_ids": ObjectId(document_id)}}
+    )
+
+    return jsonify({"message": "Документ добавлен в коллекцию"})
+
+@app.route("/api/collection/<collection_id>/<document_id>", methods=["DELETE"])
+@login_required
+def remove_document_from_collection(collection_id, document_id):
+    try:
+        collection = database.collections.find_one({"_id": ObjectId(collection_id)})
+        document = database.documents.find_one({"_id": ObjectId(document_id)})
+    except:
+        abort(400, description="Некорректный ID")
+
+    if not collection or not document:
+        abort(404, description="Коллекция или документ не найдены")
+
+    if collection["user_id"] != ObjectId(current_user.id) or document["user_id"] != ObjectId(current_user.id):
+        abort(403, description="Нет доступа")
+
+    # Удаляем ссылку на коллекцию из документа
+    database.documents.update_one(
+        {"_id": ObjectId(document_id)},
+        {"$unset": {"collection_id": ""}}
+    )
+
+    # Удаляем ID документа из коллекции
+    database.collections.update_one(
+        {"_id": ObjectId(collection_id)},
+        {"$pull": {"doc_ids": ObjectId(document_id)}}
+    )
+
+    return jsonify({"message": "Документ удалён из коллекции"})
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Логин и пароль обязательны"}), 400
+
+    user_data = database.users.find_one({"email": email})
+    if not user_data or not (hashlib.sha256(password.encode()).hexdigest() == user_data["h_password"]):
+        return jsonify({"error": "Неверный логин или пароль"}), 401
+    user = User(user_data['_id'], user_data['username'], user_data['collections'])
+    login_user(user)
+
+    return jsonify({"message": "Успешный вход", "user_id": str(user.id)})
+
+@app.route("/api/register", methods=["POST"])
+def api_register():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    email = data.get("email")
+
+    if not username or not password:
+        return jsonify({"error": "Логин и пароль обязательны"}), 400
+
+    if database.users.find_one({"username": username}):
+        return jsonify({"error": "Пользователь с таким именем уже существует"}), 400
+
+    new_user = {
+        "email": email,
+        "username": username,
+        "h_password": hashlib.sha256(password.encode()).hexdigest(),
+        "collection_ids": []
+    }
+
+    result = database.users.insert_one(new_user)
+
+    return jsonify({"message": "Пользователь успешно зарегистрирован", "user_id": str(result.inserted_id)})
+
 @app.route("/collections", methods=["GET", "POST"])
 @login_required
 def collections():
@@ -70,6 +381,15 @@ def collections():
     user_collections = list(database.collections.find({"user_id": current_user.id}))
     return render_template('collections.html', collections=user_collections)
 
+@app.route("/collections/<collection_id>/documents", methods=["GET", "POST"])
+@login_required
+def documents(collection_id: str):
+    collection = database.collections.find_one({"_id":ObjectId(collection_id)})
+    if not collection or collection['user_id'] != current_user.id:
+        abort(403)
+    collection_documents = list(database.documents.find({"collection_id": ObjectId(collection_id)}))
+    return render_template('documents.html', collection=collection, documents=collection_documents)
+
 @app.route("/collections/<collection_id>/delete", methods=['GET', 'POST'])
 @login_required
 def delete_collection(collection_id):
@@ -89,7 +409,7 @@ def delete_collection(collection_id):
         {"_id": ObjectId(current_user.id)},
         {"$pull": {"collections": ObjectId(collection_id)}}
     )
-    return render_template('collections.html', collections=user_collections, message=message)
+    return render_template('collections.html', collections=user_collections)
 
 @app.route("/collections/<collection_id>/upload", methods=["GET", "POST"])
 @login_required
@@ -169,22 +489,22 @@ def register():
             if existing_user['username'] == request.form['username']:
                 flash('Этот ник занят')
                 return render_template('register.html')
-        user = {"username": request.form["username"], "email": request.form["email"], "h_password": hashlib.sha256(request.form['password'].encode()).hexdigest(), "collections": []}
+        user = {"username": request.form["username"], "email": request.form["email"], "h_password": hashlib.sha256(request.form['password'].encode()).hexdigest(), "collection_ids": []}
         database.users.insert_one(user)
         flash("Успешная регистрация! Теперь вы можете войти в свой аккаунт.")
         return render_template('register.html')
     return render_template("register.html")
 
 
-@app.route("/status")
+@app.route("/api/status")
 def status():
     return jsonify({"status": "OK"})
 
-@app.route("/metrics")
+@app.route("/api/metrics")
 def metrics_endpoint():
     return jsonify(metrics.get_metrics())
 
-@app.route("/version")
+@app.route("/api/version")
 def version():
     return jsonify({"version": VERSION})
 

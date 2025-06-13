@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>Document Analyzer|Documents</title>
+    </head>
+    <body>
+        <a href="{{ url_for('index') }}">Домашняя страница</a>
+        <a href="{{ url_for('collections') }}">Мои коллекции</a>
+        <h1>Документы коллекции {{ collection.name }}</h1>
+        <hr>
+         {% if documents %}
+        <h2>Список документов</h2>
+        <table border="1">
+            <tr>
+                <th>Название</th>
+                <th>ID</th>
+                <th>Действия</th>
+            </tr>
+            {% for document in documents %}
+            <tr>
+                <td>{{ document.filename }}</td>
+                <td>{{ document._id }}</td>
+                <td>
+                    Статистика
+                    Удалить
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+    <p>В этой коллекции пока нет документов.</p>
+    {% endif %}
+    </body>
+</html>
