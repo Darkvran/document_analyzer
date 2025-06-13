@@ -348,8 +348,64 @@ def api_register():
     }
 
     result = database.users.insert_one(new_user)
-
     return jsonify({"message": "Пользователь успешно зарегистрирован", "user_id": str(result.inserted_id)})
+
+@app.route("/api/user/<user_id>", methods=["PATCH"])
+@login_required  # если используешь проверку токена
+def update_password(user_id):
+    try:
+        user_oid = ObjectId(user_id)
+    except:
+        return jsonify({"error": "Invalid user ID"}), 400
+
+    if str(current_user.id) != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json()
+    new_password = data.get("password")
+
+    hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
+
+    result = database.users.update_one(
+        {"_id": user_oid},
+        {"$set": {"h_password": hashed_password}}
+    )
+
+    if result.matched_count == 0:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({"message": "Password updated successfully"}), 200
+
+@app.route("/api/user/<user_id>", methods=["DELETE"])
+@login_required
+def delete_user(user_id):
+    try:
+        user_oid = ObjectId(user_id)
+    except:
+        return jsonify({"error": "Invalid user ID"}), 400
+
+    # Проверка авторизации
+    if str(current_user.id) != str(user_id):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # Удаление пользователя
+    result = database.users.delete_one({"_id": user_oid})
+    if result.deleted_count == 0:
+        return jsonify({"error": "User not found"}), 404
+
+    # Удаление коллекций пользователя
+    database.collections.delete_many({"user_id": user_oid})
+
+    # Удаление документов пользователя
+    database.documents.delete_many({"user_id": user_oid})
+
+    # Завершение сессии
+    logout_user()
+
+    response = jsonify({"message": "User and all data deleted successfully"})
+    response.delete_cookie("access_token")  # если хранишь токен в cookie
+
+    return response, 200
 
 @app.route("/collections", methods=["GET", "POST"])
 @login_required
