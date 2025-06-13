@@ -42,6 +42,7 @@ def load_user(user_id):
 def index():
     return render_template("index.html")
 
+
 class Node:
     def __init__(self, char=None, freq=0):
         self.char = char
@@ -49,7 +50,6 @@ class Node:
         self.left = None
         self.right = None
 
-    # сравнение для heapq
     def __lt__(self, other):
         return self.freq < other.freq
 
@@ -351,7 +351,7 @@ def api_register():
     return jsonify({"message": "Пользователь успешно зарегистрирован", "user_id": str(result.inserted_id)})
 
 @app.route("/api/user/<user_id>", methods=["PATCH"])
-@login_required  # если используешь проверку токена
+@login_required 
 def update_password(user_id):
     try:
         user_oid = ObjectId(user_id)
@@ -384,31 +384,28 @@ def delete_user(user_id):
     except:
         return jsonify({"error": "Invalid user ID"}), 400
 
-    # Проверка авторизации
     if str(current_user.id) != str(user_id):
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Удаление пользователя
     result = database.users.delete_one({"_id": user_oid})
     if result.deleted_count == 0:
         return jsonify({"error": "User not found"}), 404
 
-    # Удаление коллекций пользователя
+
     database.collections.delete_many({"user_id": user_oid})
 
-    # Удаление документов пользователя
     database.documents.delete_many({"user_id": user_oid})
 
-    # Завершение сессии
     logout_user()
 
     response = jsonify({"message": "User and all data deleted successfully"})
-    response.delete_cookie("access_token")  # если хранишь токен в cookie
+    response.delete_cookie("access_token")  
 
     return response, 200
 
 @app.route("/collections", methods=["GET", "POST"])
 @login_required
+
 def collections():
     if request.method == 'POST':
         if '' in request.form.values():
@@ -437,6 +434,7 @@ def collections():
     user_collections = list(database.collections.find({"user_id": current_user.id}))
     return render_template('collections.html', collections=user_collections)
 
+
 @app.route("/collections/<collection_id>/documents", methods=["GET", "POST"])
 @login_required
 def documents(collection_id: str):
@@ -445,6 +443,7 @@ def documents(collection_id: str):
         abort(403)
     collection_documents = list(database.documents.find({"collection_id": ObjectId(collection_id)}))
     return render_template('documents.html', collection=collection, documents=collection_documents)
+
 
 @app.route("/collections/<collection_id>/delete", methods=['GET', 'POST'])
 @login_required
@@ -465,7 +464,9 @@ def delete_collection(collection_id):
         {"_id": ObjectId(current_user.id)},
         {"$pull": {"collections": ObjectId(collection_id)}}
     )
+
     return render_template('collections.html', collections=user_collections)
+
 
 @app.route("/collections/<collection_id>/upload", methods=["GET", "POST"])
 @login_required
@@ -546,6 +547,7 @@ def register():
                 flash('Этот ник занят')
                 return render_template('register.html')
         user = {"username": request.form["username"], "email": request.form["email"], "h_password": hashlib.sha256(request.form['password'].encode()).hexdigest(), "collection_ids": []}
+
         database.users.insert_one(user)
         flash("Успешная регистрация! Теперь вы можете войти в свой аккаунт.")
         return render_template('register.html')

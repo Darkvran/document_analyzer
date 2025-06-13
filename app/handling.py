@@ -3,6 +3,7 @@ from data import database
 import math
 from bson import ObjectId
 
+
 def recalculate_idf(collection_id: str):
     collection_id_obj = ObjectId(collection_id)
     documents = list(database.documents.find({"collection_id": collection_id_obj}))
@@ -28,6 +29,7 @@ def recalculate_idf(collection_id: str):
             {"_id": doc["_id"]},
             {"$set": {"words": updated_words}}
         )
+
 
 def file_handling(content: str, filename: str, collection_id: str, user_id: str) -> list:
     words_list = re.split(r'\W+', content.lower())
@@ -67,3 +69,4 @@ def file_handling(content: str, filename: str, collection_id: str, user_id: str)
         for word in sorted(updated_doc['words'], key=lambda w: w.get('idf', 0), reverse=True)
     ]
     return result
+
