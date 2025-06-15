@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint
 from flasgger import swag_from
 from app.data import database, User
-import hashlib
+import hashlib, re
 from flask_login import login_user
 
 api_auth_bp = Blueprint("api_auth", __name__)
@@ -58,6 +58,9 @@ def api_login():
 
     return jsonify({"message": "Успешный вход", "user_id": str(user.id)})
 
+def is_valid_email(email):
+    return re.match(r"^[\w\.-]+@[\w\.-]+\.\w{2,}$", email)
+
 @api_auth_bp.route("/api/register", methods=["POST"])
 @swag_from({
     'tags': ['Auth'],
@@ -108,11 +111,17 @@ def api_register():
     password = data.get("password")
     email = data.get("email")
 
-    if not username or not password:
-        return jsonify({"error": "Логин и пароль обязательны"}), 400
+    if not username or not password or not email:
+        return jsonify({"error": "Имя пользователя, пароль и email обязательны"}), 400
+
+    if not is_valid_email(email):
+        return jsonify({"error": "Некорректный формат email"}), 400
 
     if database.users.find_one({"username": username}):
         return jsonify({"error": "Пользователь с таким именем уже существует"}), 400
+
+    if database.users.find_one({"email": email}):
+        return jsonify({"error": "Пользователь с таким email уже существует"}), 400
 
     new_user = {
         "email": email,

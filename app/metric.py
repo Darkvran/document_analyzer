@@ -2,10 +2,13 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 import statistics, os
 from dotenv import load_dotenv
+from data import database
 
-dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(dotenv_path)
 
+
+# Экземляр сборрщика метрик
 class MetricsCollector:
     def __init__(self):
         self.client = MongoClient(os.getenv("MONGODB_URI"))
@@ -13,11 +16,9 @@ class MetricsCollector:
         self.collection = self.db["metrics"]
 
         if self.collection.count_documents({}) == 0:
-            self.collection.insert_one({
-                "files_processed": 0,
-                "processing_times": [],
-                "timestamps": []
-            })
+            self.collection.insert_one(
+                {"files_processed": 0, "processing_times": [], "timestamps": []}
+            )
 
     def register_file_processed(self, processing_time: float):
         doc = self.collection.find_one()
@@ -43,7 +44,7 @@ class MetricsCollector:
                 "std_dev_processing_time": None,
                 "median_processing_time": None,
                 "last_5_processing_times": [],
-                "files_processed_last_24h": 0
+                "files_processed_last_24h": 0,
             }
 
         avg_time = sum(times) / len(times)
@@ -69,5 +70,5 @@ class MetricsCollector:
             "std_dev_processing_time": round(std_dev, 3),
             "median_processing_time": round(median, 3),
             "last_5_processing_times": last_5_times,
-            "files_processed_last_24h": files_last_24h
+            "files_processed_last_24h": files_last_24h,
         }

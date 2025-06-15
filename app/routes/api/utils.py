@@ -11,60 +11,63 @@ load_dotenv()
 api_utils_bp = Blueprint("api_utils_bp", __name__)
 
 ALLOWED_EXTENSIONS = os.getenv("APP_ALLOWED_EXTENSIONS")
-VERSION = os.getenv("APP_VERSION")
 
 
 @api_utils_bp.route("/api/status")
-@swag_from({
-    'tags': ['Utils'],
-    'summary': 'Проверка статуса API',
-    'responses': {
-        200: {
-            'description': 'API работает',
-            'schema': {
-                'type': 'object',
-                'properties': {
-                    'status': {'type': 'string', 'example': 'OK'}
-                }
+@swag_from(
+    {
+        "tags": ["Utils"],
+        "summary": "Проверка статуса API",
+        "responses": {
+            200: {
+                "description": "API работает",
+                "schema": {
+                    "type": "object",
+                    "properties": {"status": {"type": "string", "example": "OK"}},
+                },
             }
-        }
+        },
     }
-})
+)
 def status():
     return jsonify({"status": "OK"})
 
+
 @api_utils_bp.route("/api/metrics")
-@swag_from({
-    'tags': ['Utils'],
-    'summary': 'Метрики системы',
-    'responses': {
-        200: {
-            'description': 'Возвращает собранные метрики',
-            'schema': {
-                'type': 'object',
-                'additionalProperties': {'type': 'number'}
+@swag_from(
+    {
+        "tags": ["Utils"],
+        "summary": "Метрики системы",
+        "responses": {
+            200: {
+                "description": "Возвращает собранные метрики",
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": {"type": "number"},
+                },
             }
-        }
+        },
     }
-})
+)
 def metrics_endpoint():
     return jsonify(metrics.get_metrics())
 
+
 @api_utils_bp.route("/api/version")
-@swag_from({
-    'tags': ['Utils'],
-    'summary': 'Версия приложения',
-    'responses': {
-        200: {
-            'description': 'Актуальная версия приложения',
-            'schema': {
-                'type': 'object',
-                'properties': {
-                    'version': {'type': 'string', 'example': '1.0.0'}
-                }
+@swag_from(
+    {
+        "tags": ["Utils"],
+        "summary": "Версия приложения",
+        "responses": {
+            200: {
+                "description": "Актуальная версия приложения",
+                "schema": {
+                    "type": "object",
+                    "properties": {"version": {"type": "string", "example": "1.0.0"}},
+                },
             }
-        }
+        },
     }
-})
+)
 def version():
-    return jsonify({"version": VERSION})
+    return jsonify({"version": "2.1.0"})

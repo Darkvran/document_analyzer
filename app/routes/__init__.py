@@ -1,3 +1,4 @@
+# Регистрация всех эндпоинтов
 def register_blueprints(app):
     from .api import register_api_blueprints
     from .auth import auth_bp
