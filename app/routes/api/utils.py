@@ -70,4 +70,4 @@ def metrics_endpoint():
     }
 )
 def version():
-    return jsonify({"version": "2.1.0"})
+    return jsonify({"version": "2.1.1"})
