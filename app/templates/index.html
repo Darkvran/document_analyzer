@@ -10,12 +10,12 @@
             {% if not current_user.is_authenticated %}
             <h3>Добро пожаловать.</h3>
             <p>Пожалуйста, войдите или зарегестрируйтесь.</p>
-            <a href="{{ url_for('login') }}">Авторизация</a>
-            <a href="{{ url_for('register') }}">Регистрация</a>
+            <a href="{{ url_for('auth_bp.login') }}">Авторизация</a>
+            <a href="{{ url_for('auth_bp.register') }}">Регистрация</a>
             {% else %}
             <h3>Добро пожаловать, {{current_user.username}}</h3>
-            <a href="{{ url_for('collections') }}">Мои коллекции</a>
-            <a href="{{ url_for('logout') }}">Выход</a>
+            <a href="{{ url_for('collections_bp.collections') }}">Мои коллекции</a>
+            <a href="{{ url_for('api_user.logout') }}">Выход</a>
             {% endif %}
             
         </nav>
