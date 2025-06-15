@@ -1,4 +1,5 @@
 from flask import Flask
+from flasgger import Swagger
 from app.routes import register_blueprints
 import os
 from flask_login import LoginManager
@@ -8,8 +9,12 @@ from bson import ObjectId
 def create_app():
     app = Flask(__name__)
     app.config['SESSION_TYPE'] = 'filesystem'
+    app.config['SWAGGER'] = {
+        'title': 'TF-IDF API',
+        'uiversion': 3
+    }
     app.secret_key = os.getenv("FLASK_SECRET_KEY")
-
+    Swagger(app)
     login = LoginManager()
     @login.user_loader
     def load_user(user_id):

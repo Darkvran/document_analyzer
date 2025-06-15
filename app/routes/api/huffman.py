@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, abort
+from flasgger import swag_from
 from collections import Counter
 from bson import ObjectId
 import heapq
@@ -54,6 +55,38 @@ def huffman_encode(text):
 
 @api_huffman_bp.route("/api/documents/<document_id>/huffman", methods=["GET"])
 @login_required
+@swag_from({
+    'tags': ['Huffman'],
+    'summary': 'Получить Хаффман-кодирование документа',
+    'description': 'Кодирует содержимое документа с помощью алгоритма Хаффмана.',
+    'parameters': [
+        {
+            'name': 'document_id',
+            'in': 'path',
+            'required': True,
+            'type': 'string',
+            'description': 'ID документа'
+        }
+    ],
+    'responses': {
+        200: {
+            'description': 'Успешное кодирование',
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'encoded': {'type': 'string'},
+                    'code_map': {
+                        'type': 'object',
+                        'additionalProperties': {'type': 'string'}
+                    }
+                }
+            }
+        },
+        400: {'description': 'Некорректный ID или ошибка обработки'},
+        404: {'description': 'Документ не найден или доступ запрещён'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'}
+    }
+})
 def document_huffman(document_id):
     try:
         doc = database.documents.find_one({

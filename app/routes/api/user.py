@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from flasgger import swag_from
 import hashlib
 from bson import ObjectId
 from app.data import database
@@ -9,6 +10,38 @@ api_user_bp = Blueprint("api_user", __name__)
 
 @api_user_bp.route("/api/user/<user_id>", methods=["PATCH"])
 @login_required 
+@swag_from({
+    'tags': ['User'],
+    'summary': 'Обновить пароль пользователя',
+    'parameters': [
+        {
+            'name': 'user_id',
+            'in': 'path',
+            'required': True,
+            'type': 'string',
+            'description': 'ID пользователя'
+        },
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'password': {'type': 'string'}
+                },
+                'required': ['password']
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Пароль успешно обновлён'},
+        400: {'description': 'Некорректный ID пользователя'},
+        403: {'description': 'Нет прав'},
+        404: {'description': 'Пользователь не найден'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'}
+    }
+})
 def update_password(user_id):
     try:
         user_oid = ObjectId(user_id)
@@ -35,6 +68,26 @@ def update_password(user_id):
 
 @api_user_bp.route("/api/user/<user_id>", methods=["DELETE"])
 @login_required
+@swag_from({
+    'tags': ['User'],
+    'summary': 'Удалить пользователя и все его данные',
+    'parameters': [
+        {
+            'name': 'user_id',
+            'in': 'path',
+            'required': True,
+            'type': 'string',
+            'description': 'ID пользователя'
+        }
+    ],
+    'responses': {
+        200: {'description': 'Пользователь и все данные удалены'},
+        400: {'description': 'Некорректный ID пользователя'},
+        403: {'description': 'Нет прав'},
+        404: {'description': 'Пользователь не найден'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'}
+    }
+})
 def delete_user(user_id):
     try:
         user_oid = ObjectId(user_id)
@@ -62,6 +115,14 @@ def delete_user(user_id):
 
 @api_user_bp.route("/api/logout")
 @login_required
+@swag_from({
+    'tags': ['User'],
+    'summary': 'Выход пользователя',
+    'responses': {
+        200: {'description': 'Успешный выход пользователя'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'}
+    }
+})
 def logout():
     logout_user()
     response = jsonify({"message": "Logout succesful"})

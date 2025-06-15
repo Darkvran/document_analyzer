@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, abort
+from flasgger import swag_from
 from bson import ObjectId
 from app.data import database
 from flask_login import login_required, current_user
@@ -9,6 +10,37 @@ api_collections_bp = Blueprint("api_collections", __name__)
 
 @api_collections_bp.route("/api/collections", methods=["GET"])
 @login_required
+@swag_from({
+    'tags': ['Collections'],
+    'summary': 'Получить список коллекций пользователя',
+    'description': 'Возвращает список всех коллекций пользователя и документы в них.',
+    'responses': {
+        200: {
+            'description': 'Список коллекций',
+            'schema': {
+                'type': 'array',
+                'items': {
+                    'type': 'object',
+                    'properties': {
+                        'id': {'type': 'string'},
+                        'name': {'type': 'string'},
+                        'documents': {
+                            'type': 'array',
+                            'items': {
+                                'type': 'object',
+                                'properties': {
+                                    'id': {'type': 'string'},
+                                    'filename': {'type': 'string'}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'}
+    }
+})
 def get_collections():
     collections = list(database.collections.find({"user_id": ObjectId(current_user.id)}))
     
@@ -28,6 +60,36 @@ def get_collections():
 
 @api_collections_bp.route("/api/collections/<collection_id>", methods=["GET"])
 @login_required
+@swag_from({
+    'tags': ['Collections'],
+    'summary': 'Получить список ID документов в коллекции',
+    'parameters': [
+        {
+            'name': 'collection_id',
+            'in': 'path',
+            'required': True,
+            'type': 'string'
+        }
+    ],
+    'responses': {
+        200: {
+            'description': 'Список ID документов',
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'document_ids': {
+                        'type': 'array',
+                        'items': {'type': 'string'}
+                    }
+                }
+            }
+        },
+        400: {'description': 'Некорректный ID коллекции'},
+        403: {'description': 'Нет доступа'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'},
+        404: {'description': 'Коллекция не найдена'}
+    }
+})
 def get_collection_documents(collection_id):
     try:
         collection = database.collections.find_one({"_id": ObjectId(collection_id)})
@@ -47,6 +109,44 @@ def get_collection_documents(collection_id):
 
 @api_collections_bp.route("/api/collections/<collection_id>/statistics", methods=["GET"])
 @login_required
+@swag_from({
+    'tags': ['Collections'],
+    'summary': 'Получить статистику по коллекции',
+    'description': 'Вычисляет и возвращает усреднённые TF и IDF значения по всем документам в коллекции.',
+    'parameters': [
+        {
+            'name': 'collection_id',
+            'in': 'path',
+            'required': True,
+            'type': 'string'
+        }
+    ],
+    'responses': {
+        200: {
+            'description': 'Статистика коллекции',
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'statistics': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'word': {'type': 'string'},
+                                'tf': {'type': 'number'},
+                                'idf': {'type': 'number'}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {'description': 'Некорректный ID коллекции'},
+        403: {'description': 'Нет доступа'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'},
+        404: {'description': 'Коллекция не найдена'}
+    }
+})
 def get_collection_statistics(collection_id):
     try:
         collection = database.collections.find_one({"_id": ObjectId(collection_id)})
@@ -105,6 +205,21 @@ def get_collection_statistics(collection_id):
 
 @api_collections_bp.route("/api/collections/<collection_id>/<document_id>", methods=["POST"])
 @login_required
+@swag_from({
+    'tags': ['Collections'],
+    'summary': 'Добавить документ в коллекцию',
+    'parameters': [
+        {'name': 'collection_id', 'in': 'path', 'required': True, 'type': 'string'},
+        {'name': 'document_id', 'in': 'path', 'required': True, 'type': 'string'}
+    ],
+    'responses': {
+        200: {'description': 'Документ добавлен в коллекцию'},
+        400: {'description': 'Некорректный ID'},
+        403: {'description': 'Нет доступа'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'},
+        404: {'description': 'Коллекция или документ не найдены'}
+    }
+})
 def add_document_to_collection(collection_id, document_id):
     try:
         collection = database.collections.find_one({"_id": ObjectId(collection_id)})
@@ -134,6 +249,21 @@ def add_document_to_collection(collection_id, document_id):
 
 @api_collections_bp.route("/api/collections/<collection_id>/<document_id>", methods=["DELETE"])
 @login_required
+@swag_from({
+    'tags': ['Collections'],
+    'summary': 'Удалить документ из коллекции',
+    'parameters': [
+        {'name': 'collection_id', 'in': 'path', 'required': True, 'type': 'string'},
+        {'name': 'document_id', 'in': 'path', 'required': True, 'type': 'string'}
+    ],
+    'responses': {
+        200: {'description': 'Документ удалён из коллекции'},
+        400: {'description': 'Некорректный ID'},
+        403: {'description': 'Нет доступа'},
+        401: {'description': 'Ошибка доступа. Для данной команды необходима авторизация.'},
+        404: {'description': 'Коллекция или документ не найдены'}
+    }
+})
 def remove_document_from_collection(collection_id, document_id):
     try:
         collection = database.collections.find_one({"_id": ObjectId(collection_id)})
