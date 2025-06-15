@@ -7,6 +7,7 @@
 ### Вывод упорядочить по уменьшению idf.
 ---
 ## Структура проекта
+```
 documentAnalyzer/
 ├── app/
 │   ├── __init__.py #Инициализация flask-приложения
@@ -38,7 +39,7 @@ documentAnalyzer/
 ├── docker-compose.yml
 ├── nginx
 └── requirements.txt
-
+```
 ### .env
 Содержит в себе все конфигурируемые параметры:
 1. FLASK_SECRET_KEY
