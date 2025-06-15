@@ -1,10 +1,11 @@
 from flask import Blueprint, jsonify
 from flasgger import swag_from
 from app.metric import MetricsCollector
+from app.data import database
 from dotenv import load_dotenv
 import os
 
-metrics = MetricsCollector()
+metrics = MetricsCollector(database)
 
 load_dotenv()
 

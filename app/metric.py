@@ -1,8 +1,6 @@
-from pymongo import MongoClient
 from datetime import datetime, timedelta
 import statistics, os
 from dotenv import load_dotenv
-from data import database
 
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(dotenv_path)
@@ -10,27 +8,24 @@ load_dotenv(dotenv_path)
 
 # Экземляр сборрщика метрик
 class MetricsCollector:
-    def __init__(self):
-        self.client = MongoClient(os.getenv("MONGODB_URI"))
-        self.db = self.client[os.getenv("MONGODB_DB_NAME")]
-        self.collection = self.db["metrics"]
-
-        if self.collection.count_documents({}) == 0:
-            self.collection.insert_one(
+    def __init__(self, database):
+        self.metrics_table = database.metrics
+        if self.metrics_table.count_documents({}) == 0:
+            self.metrics_table.insert_one(
                 {"files_processed": 0, "processing_times": [], "timestamps": []}
             )
 
     def register_file_processed(self, processing_time: float):
-        doc = self.collection.find_one()
+        doc = self.metrics_table.find_one()
 
         doc["files_processed"] += 1
         doc["processing_times"].append(processing_time)
         doc["timestamps"].append(datetime.now().isoformat())
 
-        self.collection.replace_one({}, doc)
+        self.metrics_table.replace_one({}, doc)
 
     def get_metrics(self):
-        doc = self.collection.find_one()
+        doc = self.metrics_table.find_one()
         times = doc.get("processing_times", [])
         timestamps_raw = doc.get("timestamps", [])
 
