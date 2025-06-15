@@ -1,3 +1,4 @@
+# Регистрация всех API рутов
 def register_api_blueprints(app):
     from .auth import api_auth_bp
     from .collections import api_collections_bp
