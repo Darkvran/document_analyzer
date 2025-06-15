@@ -2,7 +2,7 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 import statistics, os
 from dotenv import load_dotenv
-from data import database
+from app.data import database
 
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(dotenv_path)
