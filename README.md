@@ -126,11 +126,10 @@ IP-адрес, по которому будет работать Flask прил�
 5. pip install -r requirements.txt
 
 Для запуска использовать:
-
-flask --app server run
-(!) Для запуска необходимо находиться в директории с server.py
+python run.py
+(!) Для запуска необходимо находиться в директории с run.py
 
 ### Docker-images
 1. git clone https://github.com/Darkvran/document_analyzer
 2. cd document_analyzer
-3. docker compose up -d --build
+3. docker compose up -d
