@@ -5,10 +5,10 @@
         <title>Document Analyzer|Collections</title>
     </head>
     <body>
-        <a href="{{ url_for('index') }}">Домашняя страница</a>
+        <a href="{{ url_for('index_bp.index') }}">Домашняя страница</a>
         <h1>Мои коллекции</h1>
         
-        <form method="POST" action="{{ url_for('collections') }}">
+        <form method="POST" action="{{ url_for('collections_bp.collections') }}">
             <h2>Cоздать новую коллекцию</h2>
             {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -33,9 +33,9 @@
             <tr>
                 <td>{{ collection.name }}</td>
                 <td>
-                    <a href = "{{ url_for('documents', collection_id=collection._id) }}" >Смотреть</a>
-                    <a href="{{ url_for('upload', collection_id=collection._id) }}">Загрузить</a>
-                    <a href="{{ url_for('delete_collection', collection_id=collection._id) }}">Удалить</a>
+                    <a href = "{{ url_for('collections_bp.documents', collection_id=collection._id) }}" >Смотреть</a>
+                    <a href="{{ url_for('collections_bp.upload', collection_id=collection._id) }}">Загрузить</a>
+                    <a href="{{ url_for('collections_bp.delete_collection', collection_id=collection._id) }}">Удалить</a>
                 </td>
             </tr>
             {% endfor %}

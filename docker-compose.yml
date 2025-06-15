@@ -14,7 +14,7 @@ services:
     depends_on:
       - mongo
     volumes:
-      - ./app:/app
+      - ./app:/app/app
 
   mongo:
     image: mongo:6

@@ -5,8 +5,8 @@
         <title>Document Analyzer|Upload</title>
     </head>
     <body>
-        <a href="{{ url_for('index') }}">Домашняя страница</a>
-        <a href="{{ url_for('collections') }}">Мои коллекции</a>
+        <a href="{{ url_for('index_bp.index') }}">Домашняя страница</a>
+        <a href="{{ url_for('collections_bp.collections') }}">Мои коллекции</a>
         <h1>Загрузить новый файл в коллекцию {{ collection_name }}</h1>
         <div id="loading" style="display: none;">Обработка документа...</div>
         <form method=post enctype=multipart/form-data onsubmit="showLoader()">

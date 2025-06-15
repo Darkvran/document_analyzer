@@ -5,8 +5,8 @@
         <title>Document Analyzer|Documents</title>
     </head>
     <body>
-        <a href="{{ url_for('index') }}">Домашняя страница</a>
-        <a href="{{ url_for('collections') }}">Мои коллекции</a>
+        <a href="{{ url_for('index_bp.index') }}">Домашняя страница</a>
+        <a href="{{ url_for('collections_bp.collections') }}">Мои коллекции</a>
         <h1>Документы коллекции {{ collection.name }}</h1>
         <hr>
          {% if documents %}
