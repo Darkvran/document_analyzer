@@ -50,6 +50,7 @@ class DataBase:
         self.documents = self.db["documents"]
         self.users = self.db["users"]
         self.collections = self.db["collections"]
+        self.metrics = self.db ["metrics"]
 
     def insert_document(self, document: Document):
         self.documents.update_one(

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from app.metric import MetricsCollector
 from werkzeug.utils import secure_filename
 from app.handling import file_handling
-
+from app.data import database
 
 load_dotenv()
 
@@ -93,7 +93,7 @@ def delete_collection(collection_id):
 @collections_bp.route("/collections/<collection_id>/upload", methods=["GET", "POST"])
 @login_required
 def upload(collection_id):
-    metrics = MetricsCollector()
+    metrics = MetricsCollector(database)
     collection = database.collections.find_one({"_id": ObjectId(collection_id)})
     if not collection or collection["user_id"] != current_user.id:
         abort(403)
