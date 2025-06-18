@@ -1,25 +1,15 @@
 from flask import Blueprint, abort, request, flash, render_template, redirect
 from bson import ObjectId
 from app.data import database
+from app.utils import allowed_file
 from flask_login import login_required, current_user
-import os, time, chardet
-from dotenv import load_dotenv
+import time, chardet
 from app.metric import MetricsCollector
 from werkzeug.utils import secure_filename
 from app.handling import file_handling
-from app.data import database
 
-load_dotenv()
 
 collections_bp = Blueprint("collections_bp", __name__)
-
-ALLOWED_EXTENSIONS = os.getenv("APP_ALLOWED_EXTENSIONS")
-VERSION = os.getenv("APP_VERSION")
-
-
-# Функция проверки расширения файла на допустимость обработки
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @collections_bp.route("/collections", methods=["GET", "POST"])
