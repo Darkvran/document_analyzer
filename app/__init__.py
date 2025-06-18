@@ -1,17 +1,16 @@
 from flask import Flask
 from flasgger import Swagger
 from app.routes import register_blueprints
-import os
 from flask_login import LoginManager
 from app.data import User, database
 from bson import ObjectId
-
+from app.config import FLASK_SECRET_KEY
 
 # Описание инициализации Flask приложения
 def create_app():
     app = Flask(__name__)
     app.config["SWAGGER"] = {"title": "TF-IDF API", "uiversion": 3}
-    app.secret_key = os.getenv("FLASK_SECRET_KEY")
+    app.secret_key = FLASK_SECRET_KEY
 
     Swagger(app)
 

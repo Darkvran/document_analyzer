@@ -1,9 +1,5 @@
 from datetime import datetime, timedelta
-import statistics, os
-from dotenv import load_dotenv
-
-dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-load_dotenv(dotenv_path)
+import statistics
 
 
 # Экземляр сборрщика метрик

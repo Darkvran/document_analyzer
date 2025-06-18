@@ -1,37 +1,11 @@
-import os
 from pymongo import MongoClient
-from dotenv import load_dotenv
 from flask_login import UserMixin
-
-dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-load_dotenv(dotenv_path)
-
-
-class Collection:
-    def __init__(self, user_id: str, name: str, doc_ids: list[str]):
-        self.user_id = user_id
-        self.name = name
-        self.doc_ids = doc_ids
-
-
-class Document:
-    def __init__(
-        self,
-        filename: str,
-        words_num: int,
-        words: list[dict],
-        content: str,
-        collections: list[str],
-    ):
-        self.filename = filename
-        self.words_num = words_num
-        self.content = content
-        self.collections = collections
-        self.words = words
-
+import math
+from app.config import MONGODB_URI, MONGODB_DB_NAME
+from bson import ObjectId
 
 class User(UserMixin):
-    def __init__(self, id: int, username: str, collections: Collection = None):
+    def __init__(self, id: int, username: str, collections: list[str] = None):
         self.id = id
         self.username = username
         self.collections = collections
@@ -45,34 +19,39 @@ class User(UserMixin):
 class DataBase:
 
     def __init__(self):
-        self.client = MongoClient(os.getenv("MONGODB_URI"))
-        self.db = self.client[os.getenv("MONGODB_DB_NAME")]
+        self.client = MongoClient(MONGODB_URI)
+        self.db = self.client[MONGODB_DB_NAME]
         self.documents = self.db["documents"]
         self.users = self.db["users"]
         self.collections = self.db["collections"]
-        self.metrics = self.db ["metrics"]
+        self.metrics = self.db["metrics"]
 
-    def insert_document(self, document: Document):
-        self.documents.update_one(
-            {"filename": document.filename}, {"$set": document.__dict__}, upsert=True
-        )
+    # Функция для обновления статистик слов в БД.
+    # При каждом добавлении или удалении нового документа, вызывается эта функция, которая обновляет статистику в пределах измененной коллекции.
+    def recalculate_idf(self, collection_id: str):
+        collection_id_obj = ObjectId(collection_id)
+        documents = list(self.documents.find({"collection_id": collection_id_obj}))
+        total_docs = len(documents)
 
-    def get_documents_count(self) -> int:
-        return self.documents.count_documents({})
+        word_document_counts = {}
+        for doc in documents:
+            unique_words = set(word["word"] for word in doc.get("words", []))
+            for word in unique_words:
+                word_document_counts[word] = word_document_counts.get(word, 0) + 1
 
-    def get_document_frequency(self, word: str) -> int:
-        return self.documents.count_documents({"words.word": word})
+        idf_map = {
+            word: math.log((total_docs + 1) / (df + 1)) + 1
+            for word, df in word_document_counts.items()
+        }
 
-    # Подсчет топ-50 слов для документа. (Изменить limit, чтобы изменить количество набираемых слов)
-    def get_top_words_for_document(
-        self, filename: str, limit: int = 50
-    ) -> list[tuple[str, float]]:
-        doc = self.documents.find_one({"filename": filename})
-        if not doc or "words" not in doc:
-            return []
-        words = doc["words"]
-        words.sort(key=lambda w: w["tf"], reverse=True)
-        return [(entry["word"], entry["tf"]) for entry in words[:limit]]
+        for doc in documents:
+            updated_words = []
+            for word in doc.get("words", []):
+                word["idf"] = idf_map.get(word["word"], 0)
+                updated_words.append(word)
+            self.documents.update_one(
+                {"_id": doc["_id"]}, {"$set": {"words": updated_words}}
+            )
 
 
 database = DataBase()

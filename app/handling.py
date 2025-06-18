@@ -1,36 +1,6 @@
 import re
 from app.data import database
-import math
 from bson import ObjectId
-
-
-# Функция для обновления статистик слов в БД.
-# При каждом добавлении или удалении нового документа, вызывается эта функция, которая обновляет статистику.
-def recalculate_idf(collection_id: str):
-    collection_id_obj = ObjectId(collection_id)
-    documents = list(database.documents.find({"collection_id": collection_id_obj}))
-    total_docs = len(documents)
-
-    word_document_counts = {}
-    for doc in documents:
-        unique_words = set(word["word"] for word in doc.get("words", []))
-        for word in unique_words:
-            word_document_counts[word] = word_document_counts.get(word, 0) + 1
-
-    idf_map = {
-        word: math.log((total_docs + 1) / (df + 1)) + 1
-        for word, df in word_document_counts.items()
-    }
-
-    for doc in documents:
-        updated_words = []
-        for word in doc.get("words", []):
-            word["idf"] = idf_map.get(word["word"], 0)
-            updated_words.append(word)
-        database.documents.update_one(
-            {"_id": doc["_id"]}, {"$set": {"words": updated_words}}
-        )
-
 
 # Функция обработки и сохраения документа в БД при его загрузке.
 def file_handling(
@@ -65,7 +35,7 @@ def file_handling(
         {"_id": ObjectId(collection_id)},
         {"$addToSet": {"doc_ids": inserted_doc.inserted_id}},
     )
-    recalculate_idf(collection_id)
+    database.recalculate_idf(collection_id)
 
     updated_doc = database.documents.find_one({"_id": inserted_doc.inserted_id})
     result = [

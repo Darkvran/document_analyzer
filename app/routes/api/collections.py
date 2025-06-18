@@ -1,11 +1,174 @@
-from flask import Blueprint, jsonify, abort
+from flask import Blueprint, jsonify, abort, request
 from flasgger import swag_from
 from bson import ObjectId
 from app.data import database
+from app.utils import allowed_file
 from flask_login import login_required, current_user
 from collections import defaultdict
+from .utils import metrics
+import time, chardet
 
 api_collections_bp = Blueprint("api_collections", __name__)
+
+
+@api_collections_bp.route("/api/collections/<collection_id>/upload", methods=["POST"])
+@login_required
+@swag_from(
+    {
+        "tags": ["Collections"],
+        "summary": "Загрузить документ в коллекцию",
+        "parameters": [
+            {
+                "name": "collection_id",
+                "in": "path",
+                "type": "string",
+                "required": True,
+                "description": "ID коллекции, в которую загружается документ",
+            },
+            {
+                "name": "file",
+                "in": "formData",
+                "type": "file",
+                "required": True,
+                "description": "Текстовый файл для загрузки",
+            },
+        ],
+        "consumes": ["multipart/form-data"],
+        "responses": {
+            201: {
+                "description": "Документ успешно загружен",
+                "examples": {
+                    "application/json": {
+                        "message": "Документ успешно загружен",
+                        "document_id": "60f73c8e3b9f4a001fd0c1e2",
+                        "processing_time": 0.132,
+                    }
+                },
+            },
+            400: {
+                "description": "Ошибка валидации",
+                "examples": {"application/json": {"error": "Файл не найден"}},
+            },
+            401: {"description": "Пользователь не авторизован"},
+            403: {"description": "Ошибка доступа"},
+        },
+    }
+)
+def upload_document(collection_id):
+    try:
+        collection = database.collections.find_one({"_id": ObjectId(collection_id)})
+    except:
+        abort(400, description="Некорректный ID коллекции")
+    if "file" not in request.files:
+        return jsonify({"error": "Файл не найден"}), 400
+    if collection["user_id"] != ObjectId(current_user.id):
+        abort(403, description="Нет доступа к этой коллекции")
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"error": "Имя файла отсутствует"}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Недопустимый тип файла"}), 400
+
+    start_time = time.time()
+
+    raw_data = file.read()
+    encoding = chardet.detect(raw_data)["encoding"]
+    if encoding is None:
+        encoding = "utf-8"
+    content = raw_data.decode(encoding)
+
+    doc = {
+        "user_id": current_user.id,
+        "collection_id": ObjectId(collection_id),
+        "filename": file.filename,
+        "content": content,
+        "uploaded_at": time.time(),
+    }
+
+    inserted = database.documents.insert_one(doc)
+    database.collections.update_one(
+        {"_id": ObjectId(collection_id)},
+        {"$addToSet": {"doc_ids": inserted.inserted_id}},
+    )
+    database.recalculate_idf(collection_id)
+    duration = time.time() - start_time
+    metrics.register_file_processed(duration)
+
+    return (
+        jsonify(
+            {
+                "message": "Документ успешно загружен",
+                "document_id": str(inserted.inserted_id),
+                "processing_time": round(duration, 3),
+            }
+        ),
+        201,
+    )
+
+@api_collections_bp.route("/api/collections", methods=["POST"])
+@login_required
+@swag_from({
+    'tags': ['Collections'],
+    'summary': 'Создание коллекции',
+    'description': 'Создаёт новую коллекцию.',
+    'consumes': ['application/json'],
+    'parameters': [
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'name': {
+                        'type': 'string',
+                        'description': 'Название новой коллекции',
+                        'example': 'Моя коллекция'
+                    }
+                },
+                'required': ['name']
+            }
+        }
+    ],
+    'responses': {
+        201: {
+            'description': 'Коллекция создана'
+        },
+        400: {
+            'description': 'Имя коллекции обязательно'
+        },
+        401: {
+            'description': 'Неавторизован'
+        }
+    }
+})
+def create_collection():
+    data = request.get_json()
+    name = data.get("name")
+
+    if not name:
+        return jsonify({"error": "Имя коллекции обязательно"}), 400
+
+    new_collection = {
+        "name": name,
+        "user_id": ObjectId(current_user.id),
+        "doc_ids": []
+    }
+    
+    result = database.collections.insert_one(new_collection)
+    database.users.update_one(
+                    {"_id": ObjectId(current_user.id)},
+                    {
+                        "$push": {"collection_ids": result.inserted_id}
+                    },
+                )
+
+    return jsonify({
+        "message": "Коллекция создана",
+        "collection_id": str(result.inserted_id)
+    }), 201
 
 
 @api_collections_bp.route("/api/collections", methods=["GET"])

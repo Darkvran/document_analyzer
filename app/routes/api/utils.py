@@ -2,16 +2,11 @@ from flask import Blueprint, jsonify
 from flasgger import swag_from
 from app.metric import MetricsCollector
 from app.data import database
-from dotenv import load_dotenv
-import os
 
 metrics = MetricsCollector(database)
 
-load_dotenv()
 
 api_utils_bp = Blueprint("api_utils_bp", __name__)
-
-ALLOWED_EXTENSIONS = os.getenv("APP_ALLOWED_EXTENSIONS")
 
 
 @api_utils_bp.route("/api/status")
